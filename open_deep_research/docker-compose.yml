@@ -1,0 +1,12 @@
+services:
+  open-deep-research:
+    build: .
+    ports:
+      - "2024:2024"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    mem_limit: 10G  # Enforcing memory limit per workspace requirement
