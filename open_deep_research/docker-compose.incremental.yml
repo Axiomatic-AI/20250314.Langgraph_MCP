@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  incremental-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ./research_threads:/app/research_threads
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - HOST_SHARED_PATH=/app/shared
+    command: streamlit run dashboard_incremental.py
+    restart: unless-stopped
+    mem_limit: 8G  # Limit memory usage to 8GB to stay under the 10GB limit
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

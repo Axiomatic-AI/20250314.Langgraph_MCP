@@ -9,17 +9,20 @@ standard deep research approaches and MCP in terms of:
 4. Resource efficiency
 """
 
+# Standard library imports
 import asyncio
 import logging
 import os
-import psutil
 import time
-
-import matplotlib.pyplot as plt
-import numpy as np
-import streamlit as st
 from typing import Any, Dict
 
+# Third-party imports
+import matplotlib.pyplot as plt
+import numpy as np
+import psutil
+import streamlit as st
+
+# Local application imports
 from photonics_arxiv_agent import PhotonicsArxivAgent
 
 # Configure logging

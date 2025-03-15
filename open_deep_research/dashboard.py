@@ -5,15 +5,18 @@ This script provides a simple web interface to interact with the Photonics Resea
 
 """
 
+# Standard library imports
 import asyncio
 import os
 import tempfile
 from pathlib import Path
 
-import streamlit as st
+# Third-party imports
 from dotenv import load_dotenv
-from streamlit import components
+import streamlit as st
+import streamlit.components.v1 as components_v1
 
+# Local application imports
 from photonics_arxiv_agent import PhotonicsArxivAgent
 
 # Load environment variables from .env file
@@ -43,7 +46,7 @@ tavily_api_key = os.environ.get("TAVILY_API_KEY")
 
 # Add a test mode option in the sidebar
 st.sidebar.header("Configuration")
-test_mode = st.sidebar.checkbox("Test Mode (Skip API calls)", value=False)
+test_mode = st.sidebar.checkbox("Test Mode (Skip API calls)", value=False, key="test_mode")
 max_papers = st.sidebar.slider("Maximum Papers to Analyze", 1, 10, 5)
 
 if not anthropic_api_key or not anthropic_api_key.startswith("sk-ant"):
@@ -112,9 +115,9 @@ async def search_papers(topic, max_papers):
             raise e
 
 # Function to run the research
-async def run_research(topic, papers, test_mode=False):
+async def run_research(topic, papers):
     """Run the research process and return the report."""
-    if test_mode:
+    if st.session_state.get('test_mode', False):
         # Return mock data for testing
         return (
             f"# Photonics Research Report: {topic}\n\n"
@@ -405,7 +408,7 @@ if generate_button and selected_papers:
             report_placeholder.info("Starting report generation...")
             
             # Run the research asynchronously
-            report, images, papers = asyncio.run(run_research(st.session_state.search_topic, selected_papers, test_mode))
+            report, images, papers = asyncio.run(run_research(st.session_state.search_topic, selected_papers))
             
             # Display the report
             report_placeholder.empty()
@@ -413,7 +416,7 @@ if generate_button and selected_papers:
             st.markdown(report)
             
             # Display the papers used
-            if papers and not test_mode:
+            if papers and not st.session_state.get('test_mode', False):
                 st.header("Papers Used in This Research")
                 for i, paper in enumerate(papers, 1):
                     with st.expander(f"{i}. {paper['title']}"):
@@ -749,6 +752,7 @@ if st.sidebar.checkbox("Enable DOM Element Interaction"):
                         el.classList.remove('selected-error');
                         el.classList.remove('selected-target');
                         el.classList.remove('selected-block');
+                        el.classList.remove('selected-markdown');
                         if (el.classList.contains('fixed-vertical-block')) {
                             el.style.border = '2px dashed #4CAF50';
                             el.style.boxShadow = '';
@@ -943,7 +947,7 @@ if st.sidebar.checkbox("Enable DOM Element Interaction"):
     """
     
     # Render the HTML/JS with a key to ensure proper reactivity
-    component_value = components.html(
+    component_value = components_v1.html(
         dom_interaction_html, 
         height=250,
         scrolling=True
@@ -963,16 +967,16 @@ if st.sidebar.checkbox("Enable DOM Element Interaction"):
         st.sidebar.markdown(f"""
         <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px; border-left: 5px solid #1E88E5;">
             <h4 style="color: #1E88E5; margin-top: 0;">Element Details</h4>
-            <p><strong>Tag:</strong> {element_data.get('tagName', 'N/A')}</p>
-            <p><strong>Test ID:</strong> {element_data.get('dataTestId', 'N/A')}</p>
-            <p><strong>Component:</strong> {element_data.get('dataComponentName', 'N/A')}</p>
-            <p><strong>Width:</strong> {element_data.get('width', 'N/A')}</p>
-            <p><strong>Children:</strong> {element_data.get('childrenCount', 'N/A')}</p>
+            <p><strong>Tag:</strong> {element_data.get('tagName', 'N/A') if isinstance(element_data, dict) else 'N/A'}</p>
+            <p><strong>Test ID:</strong> {element_data.get('dataTestId', 'N/A') if isinstance(element_data, dict) else 'N/A'}</p>
+            <p><strong>Component:</strong> {element_data.get('dataComponentName', 'N/A') if isinstance(element_data, dict) else 'N/A'}</p>
+            <p><strong>Width:</strong> {element_data.get('width', 'N/A') if isinstance(element_data, dict) else 'N/A'}</p>
+            <p><strong>Children:</strong> {element_data.get('childrenCount', 'N/A') if isinstance(element_data, dict) else 'N/A'}</p>
         </div>
         """, unsafe_allow_html=True)
         
         # Show element text if available
-        if 'text' in element_data and element_data['text']:
+        if isinstance(element_data, dict) and 'text' in element_data and element_data['text']:
             st.sidebar.markdown("#### Element Text")
             st.sidebar.markdown(f"""
             <div style="background-color: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;">
@@ -981,7 +985,7 @@ if st.sidebar.checkbox("Enable DOM Element Interaction"):
             """, unsafe_allow_html=True)
         
         # Show element structure if available
-        if 'structure' in element_data and element_data['structure']:
+        if isinstance(element_data, dict) and 'structure' in element_data and element_data['structure']:
             st.sidebar.markdown("#### Element Structure")
             st.sidebar.json(element_data['structure'])
             
@@ -991,19 +995,20 @@ if st.sidebar.checkbox("Enable DOM Element Interaction"):
             st.sidebar.info("Analyzing element structure and content...")
             # In a real implementation, this would perform additional analysis
             
-        if 'type' in element_data:
+        if isinstance(element_data, dict) and 'type' in element_data:
             if element_data['type'] == 'TARGET_DIV':
                 st.sidebar.success("This is the target vertical block div element!")
             elif element_data['type'] == 'ERROR_DIV':
                 st.sidebar.error("This is an error message div!")
-                if 'errorMessage' in element_data:
+                if isinstance(element_data, dict) and 'errorMessage' in element_data:
                     st.sidebar.code(element_data['errorMessage'], language="text")
                     
                     # Provide potential fixes based on the error message
-                    if "experimental_rerun" in element_data['errorMessage']:
-                        st.sidebar.info("This error is caused by using the deprecated st.experimental_rerun() function. Replace it with st.rerun() instead.")
-                    elif "module" in element_data['errorMessage'] and "has no attribute" in element_data['errorMessage']:
-                        st.sidebar.info("This error is related to a missing module attribute. Check your imports and module versions.")
+                    if isinstance(element_data['errorMessage'], str):
+                        if "experimental_rerun" in element_data['errorMessage']:
+                            st.sidebar.info("This error is caused by using the deprecated st.experimental_rerun() function. Replace it with st.rerun() instead.")
+                        elif "module" in element_data['errorMessage'] and "has no attribute" in element_data['errorMessage']:
+                            st.sidebar.info("This error is related to a missing module attribute. Check your imports and module versions.")
             elif element_data['type'] == 'MARKDOWN_DIV':
                 st.sidebar.info("This is a markdown container div.")
     else:
