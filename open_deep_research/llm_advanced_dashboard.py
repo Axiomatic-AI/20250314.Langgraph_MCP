@@ -325,7 +325,7 @@ if selected_tab == "Paper Search":
                     # Use the model router for analysis
                     analysis = model_router.process_with_models_sync(
                         question, 
-                        model_name="claude-3-opus-20240229", 
+                        selected_model="claude-3-opus-20240229", 
                         context=context
                     )
                     
