@@ -118,7 +118,7 @@ def check_api_key(api_key=None):
 class ChatAnthropic:
     """Wrapper for the Anthropic client to support test mocking."""
     
-    def __init__(self, api_key=None, model="claude-3-opus-20240229"):
+    def __init__(self, api_key=None, model="claude-3.7-sonnet-20240229"):
         """Initialize the ChatAnthropic wrapper.
         
         Args:
@@ -926,7 +926,7 @@ class ModelRouter:
     each with different domain expertise. The agents then collaborate to create
     a comprehensive answer.
     """
-    def __init__(self, api_key=None, default_model: str = "claude-3-opus-20240229"):
+    def __init__(self, api_key=None, default_model: str = "claude-3.7-sonnet-20240229"):
         """Initialize the model router.
         
         Args:
@@ -946,37 +946,37 @@ class ModelRouter:
                 "name": "Physics Specialist",
                 "description": "Expert in physics, quantum mechanics, relativity, and physical systems.",
                 "capabilities": ["mathematical analysis", "physical intuition", "system modeling"],
-                "model": "claude-3-opus-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             },
             "biology": {
                 "name": "Biology Specialist",
                 "description": "Expert in biology, genetics, cellular processes, and biological systems.",
                 "capabilities": ["biological analysis", "genetic understanding", "ecological knowledge"],
-                "model": "claude-3-sonnet-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             },
             "chemistry": {
                 "name": "Chemistry Specialist",
                 "description": "Expert in chemistry, molecular interactions, reactions, and material properties.",
                 "capabilities": ["chemical analysis", "reaction mechanisms", "material properties"],
-                "model": "claude-3-sonnet-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             },
             "computer_science": {
                 "name": "Computer Science Specialist",
                 "description": "Expert in algorithms, data structures, and computational concepts.",
                 "capabilities": ["algorithm analysis", "computational complexity", "system design"],
-                "model": "claude-3-sonnet-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             },
             "mathematics": {
                 "name": "Mathematics Specialist",
                 "description": "Expert in mathematical theories, proofs, and abstract reasoning.",
                 "capabilities": ["formal proofs", "abstract algebra", "mathematical reasoning"],
-                "model": "claude-3-opus-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             },
             "interdisciplinary": {
                 "name": "Interdisciplinary Researcher",
                 "description": "Expert in connecting concepts across different domains and synthesizing information.",
                 "capabilities": ["cross-domain synthesis", "analogical reasoning", "holistic perspective"],
-                "model": "claude-3-opus-20240229"
+                "model": "claude-3.7-sonnet-20240229"
             }
         }
         
