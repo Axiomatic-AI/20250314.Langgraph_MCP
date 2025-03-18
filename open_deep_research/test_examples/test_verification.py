@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import our MathVerificationMCP class
-from advanced_research_modules import MathVerificationMCP, MathematicalVerification
+from advanced_research_modules import MathVerificationMCP
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
