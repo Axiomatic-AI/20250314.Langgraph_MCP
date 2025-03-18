@@ -157,7 +157,7 @@ with st.sidebar:
     # Select API model
     model_name = st.selectbox(
         "Select Model",
-        options=["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
+        options=["claude-3.7-sonnet-20240229", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
         index=0,
         key="selected_model"
     )
