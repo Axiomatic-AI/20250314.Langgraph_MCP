@@ -25,6 +25,12 @@ class MathVerificationMCP:
     symbolic mathematics, numerical verification, and pattern recognition.
     It follows design principles from Model Control Protocol (MCP) to provide
     clear, modular verification capabilities.
+    
+    Features:
+    - Equation validation and parsing
+    - Step consistency checking
+    - Full derivation verification
+    - Vector calculus support for electromagnetic equations
     """
     
     def __init__(self):
@@ -34,6 +40,25 @@ class MathVerificationMCP:
         self.common_symbols = {}
         for var in ['x', 'y', 'z', 'a', 'b', 'c', 't', 'u', 'v', 'E', 'm', 'n', 'p', 'q', 'r']:
             self.common_symbols[var] = sympy.Symbol(var)
+            
+        # Add electromagnetic symbols for Maxwell's equations
+        self.em_symbols = {
+            'epsilon_0': sympy.Symbol('epsilon_0'),  # Vacuum permittivity
+            'mu_0': sympy.Symbol('mu_0'),            # Vacuum permeability
+            'rho': sympy.Symbol('rho'),              # Charge density
+            'c': sympy.Symbol('c')                   # Speed of light
+        }
+        
+        # Add these to common symbols
+        self.common_symbols.update(self.em_symbols)
+        
+        # Define Maxwell's equations in differential form
+        self.maxwell_equations = {
+            "gauss_electric": "div(E) = rho/epsilon_0",
+            "gauss_magnetic": "div(B) = 0",
+            "faraday": "curl(E) = -partial(B)/partial(t)",
+            "ampere_maxwell": "curl(B) = mu_0*J + mu_0*epsilon_0*partial(E)/partial(t)"
+        }
     
     def _preprocess_equation(self, equation: str) -> str:
         """Preprocess equation for parsing with SymPy.
@@ -249,78 +274,158 @@ class MathVerificationMCP:
         Returns:
             Dict containing verification result
         """
-        if not steps or len(steps) < 2:
-            return {"valid": False, "error": "Derivation must contain at least two steps"}
+        result = {
+            "valid": False,
+            "steps_checked": len(steps) - 1,
+            "inconsistent_steps": None,
+            "message": ""
+        }
         
-        step_results = []
-        valid_steps = []
-        invalid_steps = []
-        
-        # Special handling for calculus expressions
-        calculus_notation = ['d/dx', '∂/∂', '∫', 'd^2', 'dx', 'dt', 'lim', 'dv']
-        is_calculus = any(any(notation in step for notation in calculus_notation) for step in steps)
-        
-        # First, verify each step is a valid mathematical expression
-        for i, step in enumerate(steps):
-            # Skip validation for calculus expressions as they may have special notation
-            if is_calculus and any(notation in step for notation in calculus_notation):
-                result = {"valid": True, "note": "Calculus notation detected"}
-            else:
-                result = self.verify_equation(step)
-                
-            step_results.append(result)
+        if len(steps) < 2:
+            result["message"] = "Derivation must have at least two steps"
+            return result
             
-            if result.get("valid", False):
-                valid_steps.append(i)
-            else:
-                invalid_steps.append(i)
-        
-        # Next, verify consistency between consecutive steps
-        consistency_results = []
+        # Check if this is a Maxwell's equations derivation
+        maxwell_count = 0
+        for step in steps:
+            for _, maxwell_eq in self.maxwell_equations.items():
+                # Simple pattern matching for Maxwell's equations
+                if any(term in step for term in ["div(E)", "div(B)", "curl(E)", "curl(B)"]):
+                    maxwell_count += 1
+                    break
+                    
+        # If multiple Maxwell's equations are present, use specialized verification
+        if maxwell_count >= 2:
+            return self.verify_maxwell_derivation(steps)
+            
+        # Otherwise use standard verification
         all_consistent = True
+        first_inconsistent_pair = None
         
         for i in range(len(steps) - 1):
-            # Skip consistency check if either step is invalid
-            if i not in valid_steps or i+1 not in valid_steps:
+            step_check = self.check_step_consistency(steps[i], steps[i+1])
+            if not step_check.get("consistent", False):
                 all_consistent = False
-                consistency_results.append({
-                    "steps": (i, i+1),
-                    "consistent": False,
-                    "error": "One or both steps are invalid"
-                })
-                continue
-                
-            # Skip consistency checks for calculus expressions
-            if is_calculus and (any(notation in steps[i] for notation in calculus_notation) or
-                              any(notation in steps[i+1] for notation in calculus_notation)):
-                consistency_results.append({
-                    "steps": (i, i+1),
-                    "consistent": True,
-                    "note": "Calculus steps, consistency assumed"
-                })
-                continue
-                
-            result = self.check_step_consistency(steps[i], steps[i+1])
-            consistency_results.append({
-                "steps": (i, i+1),
-                "consistent": result.get("consistent", False),
-                "note": result.get("note", ""),
-                "error": result.get("error", "")
-            })
+                if first_inconsistent_pair is None:
+                    first_inconsistent_pair = (i, i+1)
+                    
+        if all_consistent:
+            result["valid"] = True
+            result["message"] = "All derivation steps are consistent"
+        else:
+            result["inconsistent_steps"] = first_inconsistent_pair
+            result["message"] = f"Inconsistency between steps {first_inconsistent_pair[0]+1} and {first_inconsistent_pair[1]+1}"
             
-            if not result.get("consistent", False):
-                all_consistent = False
+        return result
         
-        return {
-            "valid_steps": valid_steps,
-            "invalid_steps": invalid_steps,
-            "all_valid": len(invalid_steps) == 0,
-            "consistency_results": consistency_results,
-            "all_consistent": all_consistent,
-            "valid": len(invalid_steps) == 0 and all_consistent,
-            "step_results": step_results
+    def verify_maxwell_derivation(self, steps: List[str]) -> Dict[str, Any]:
+        """Verify a derivation involving Maxwell's equations.
+        
+        This specialized verification method handles electromagnetic equations
+        and vector calculus operations common in Maxwell's equations.
+        
+        Args:
+            steps: List of derivation steps
+            
+        Returns:
+            Dict containing verification result
+        """
+        result = {
+            "valid": False,
+            "maxwell_equations_identified": [],
+            "message": ""
         }
-    
+        
+        # First, check which Maxwell equations are used
+        for step in steps:
+            preprocessed_step = self._preprocess_maxwell_equation(step)
+            for name, eq_pattern in self.maxwell_equations.items():
+                # Simple pattern matching for now
+                if any(term in preprocessed_step for term in eq_pattern.split("=")):
+                    if name not in result["maxwell_equations_identified"]:
+                        result["maxwell_equations_identified"].append(name)
+        
+        # Special case: If we're just listing Maxwell's equations (not a derivation), 
+        # treat them as a set of physical laws rather than steps to verify consistency between
+        if len(result["maxwell_equations_identified"]) >= 3 and len(steps) <= 4:
+            # We're likely listing Maxwell's equations - validate each equation individually
+            valid_equations = []
+            invalid_equations = []
+            
+            for i, step in enumerate(steps):
+                # Preprocess and check if each equation is valid on its own
+                preprocessed_step = self._preprocess_maxwell_equation(step)
+                step_check = self.verify_equation(preprocessed_step)
+                if step_check.get("valid", False):
+                    valid_equations.append(i)
+                else:
+                    invalid_equations.append(i)
+            
+            if not invalid_equations:
+                result["valid"] = True
+                result["message"] = f"Valid Maxwell's equations identified: {', '.join(result['maxwell_equations_identified'])}"
+            else:
+                result["message"] = f"Invalid equations at positions: {', '.join(str(i+1) for i in invalid_equations)}"
+                
+            return result
+        
+        # Otherwise, perform standard consistency checking for a derivation
+        all_consistent = True
+        first_inconsistent_pair = None
+        
+        for i in range(len(steps) - 1):
+            # Apply vector calculus preprocessing for Maxwell equations
+            step1 = self._preprocess_maxwell_equation(steps[i])
+            step2 = self._preprocess_maxwell_equation(steps[i+1])
+            
+            step_check = self.check_step_consistency(step1, step2)
+            if not step_check.get("consistent", False):
+                all_consistent = False
+                if first_inconsistent_pair is None:
+                    first_inconsistent_pair = (i, i+1)
+        
+        if all_consistent:
+            result["valid"] = True
+            if result["maxwell_equations_identified"]:
+                result["message"] = f"Valid electromagnetic derivation using {', '.join(result['maxwell_equations_identified'])}"
+            else:
+                result["message"] = "Valid derivation steps"
+        else:
+            result["message"] = f"Inconsistency between steps {first_inconsistent_pair[0]+1} and {first_inconsistent_pair[1]+1}"
+        
+        return result
+        
+    def _preprocess_maxwell_equation(self, equation: str) -> str:
+        """Preprocess equation with special handling for vector calculus and Maxwell's equations.
+        
+        Args:
+            equation: Equation string to preprocess
+            
+        Returns:
+            Preprocessed equation string
+        """
+        # Start with standard preprocessing
+        equation = self._preprocess_equation(equation)
+        
+        # Handle vector calculus operators
+        equation = equation.replace("∇·", "div(")
+        equation = equation.replace("∇×", "curl(")
+        equation = equation.replace("∇", "grad(")
+        
+        # Fix parentheses for operators if needed
+        for op in ["div", "curl", "grad"]:
+            pattern = f"{op}\\s*([A-Za-z0-9]+)"
+            equation = re.sub(pattern, f"{op}(\\1)", equation)
+            
+        # Handle partial derivatives
+        equation = equation.replace("∂", "partial")
+        
+        # Replace common EM constants
+        equation = equation.replace("ε₀", "epsilon_0")
+        equation = equation.replace("μ₀", "mu_0")
+        
+        return equation
+
 class MathematicalVerification:
     """Mathematical verification system for equations in research papers.
     
